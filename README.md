@@ -1,1 +1,7 @@
-# VimAdobeInterceptor
+`h / l` : 左右切換分頁
+`j / k` : 下/上捲動
+`d / u` : 下/上翻頁
+`gg / G` : 跳至首/尾
+`gt / gT` : 切換下/上分頁
+
+想要開機啟動 `win + r` => `shell:startup` 放入程式捷徑即可

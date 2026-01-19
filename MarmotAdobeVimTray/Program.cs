@@ -33,7 +33,7 @@ namespace MarmotAdobeVimTray
             {
                 Icon = GetAppIcon(),
                 ContextMenuStrip = CreateContextMenu(),
-                Text = "Adobe Vim 導航器 (Marmot 版)",
+                Text = "Marmot Adobe Vim 導航器",
                 Visible = true
             };
 
