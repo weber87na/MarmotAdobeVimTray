@@ -58,23 +58,20 @@ namespace MarmotAdobeVimTray
         {
             var menu = new ContextMenuStrip();
 
-            // 操作指南 (User Guide)
             menu.Items.Add("User Guide", null, (s, e) =>
             {
                 MessageBox.Show(
-                    ":q      -> Close tab; Exit if no documents left\n" +
+                    "Vim Navigation Guide:\n\n" +
+                    "x / :q  -> Close tab; Exit if no documents left\n" +
                     "h / l   : Switch to Left / Right tab\n" +
                     "j / k   : Scroll Down / Up\n" +
                     "d / u   : Page Down / Up\n" +
                     "gg / G  : Jump to Top / Bottom\n" +
                     "gt / gT : Next / Previous tab\n" +
-                    "Esc     : Reset prefix states\n\n" 
-                    );
+                    "Esc     : Reset prefix states", "MarmotAdobeVimTray");
             });
 
-            menu.Items.Add("-"); // 分隔線
-
-            // 退出程式 (Exit)
+            menu.Items.Add("-");
             menu.Items.Add("Exit", null, (s, e) =>
             {
                 _trayIcon.Visible = false;
@@ -83,6 +80,7 @@ namespace MarmotAdobeVimTray
 
             return menu;
         }
+
         private static IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
         {
             if (nCode >= 0 && wParam == (IntPtr)WM_KEYDOWN)
@@ -102,19 +100,19 @@ namespace MarmotAdobeVimTray
                     bool isShiftDown = (GetAsyncKeyState(Keys.ShiftKey) & 0x8000) != 0;
                     if (IsModifierKey(vkCode)) return CallNextHookEx(_hookID, nCode, wParam, lParam);
 
-                    // --- 處理 :q 智慧關閉 ---
+                    // --- 1. 處理 :q 智慧關閉 ---
                     if (_isColonWaiting)
                     {
                         if ((DateTime.Now - _lastColonTime).TotalMilliseconds < COLON_TIMEOUT_MS && vkCode == (int)Keys.Q)
                         {
-                            HandleVimQuit(hwnd); // 執行智慧退出邏輯
+                            HandleVimQuit(hwnd);
                             ResetStates();
                             return (IntPtr)1;
                         }
                         ResetStates();
                     }
 
-                    // 觸發冒號
+                    // 觸發冒號 (:)
                     if (vkCode == (int)Keys.OemSemicolon && isShiftDown)
                     {
                         _isColonWaiting = true;
@@ -123,7 +121,15 @@ namespace MarmotAdobeVimTray
                         return (IntPtr)1;
                     }
 
-                    // --- 處理 G 狀態 ---
+                    // --- 2. 處理快速關閉 x ---
+                    if (vkCode == (int)Keys.X && !isShiftDown)
+                    {
+                        HandleVimQuit(hwnd);
+                        ResetStates();
+                        return (IntPtr)1;
+                    }
+
+                    // --- 3. 處理 G 狀態 (gg, gt, gT) ---
                     if (_isGWaiting)
                     {
                         if ((DateTime.Now - _lastGTime).TotalMilliseconds < G_TIMEOUT_MS)
@@ -146,7 +152,7 @@ namespace MarmotAdobeVimTray
                         return (IntPtr)1;
                     }
 
-                    // --- 基礎按鍵 ---
+                    // --- 4. 基礎按鍵 ---
                     if (vkCode == (int)Keys.H) { SendKeys.SendWait("^+{TAB}"); return (IntPtr)1; }
                     if (vkCode == (int)Keys.L) { SendKeys.SendWait("^{TAB}"); return (IntPtr)1; }
                     if (vkCode == (int)Keys.G && isShiftDown) { keybd_event((byte)Keys.ShiftKey, 0, KEYEVENTF_KEYUP, 0); SendKeys.SendWait("^{END}{END}"); return (IntPtr)1; }
@@ -160,22 +166,14 @@ namespace MarmotAdobeVimTray
             return CallNextHookEx(_hookID, nCode, wParam, lParam);
         }
 
-        // --- 核心邏輯：智慧退出 ---
         private static async void HandleVimQuit(IntPtr hwnd)
         {
-            // 1. 先關閉目前分頁
-            SendKeys.SendWait("^w");
-
-            // 2. 等待 Adobe 更新 UI 標題
+            SendKeys.SendWait("^w"); // 關閉分頁
             await Task.Delay(350);
-
-            // 3. 獲取關閉分頁後的最新標題
             string currentTitle = GetWindowTitle(hwnd);
-
-            // 4. 判斷標題。如果沒有檔案特有的符號 " - " 或 ".pdf"，通常代表回到了首頁（無文件狀態）
+            // 若標題不含文件特徵，則關閉程式
             if (!currentTitle.Contains(" - ") && !currentTitle.ToLower().Contains(".pdf"))
             {
-                // 送出 Ctrl + Q 關閉整個程式
                 SendKeys.SendWait("^q");
             }
         }
@@ -184,10 +182,7 @@ namespace MarmotAdobeVimTray
         {
             const int nChars = 256;
             StringBuilder buff = new StringBuilder(nChars);
-            if (GetWindowText(hwnd, buff, nChars) > 0)
-            {
-                return buff.ToString();
-            }
+            if (GetWindowText(hwnd, buff, nChars) > 0) return buff.ToString();
             return "";
         }
 
@@ -222,7 +217,6 @@ namespace MarmotAdobeVimTray
             catch { return ""; }
         }
 
-        // --- Win32 API ---
         [StructLayout(LayoutKind.Sequential)]
         public struct GUITHREADINFO { public int cbSize; public int flags; public IntPtr hwndActive; public IntPtr hwndFocus; public IntPtr hwndCapture; public IntPtr hwndMenuOwner; public IntPtr hwndMoveSize; public IntPtr hwndCaret; public Rectangle rcCaret; }
         [DllImport("user32.dll")] static extern bool GetGUIThreadInfo(uint idThread, ref GUITHREADINFO lpgui);
