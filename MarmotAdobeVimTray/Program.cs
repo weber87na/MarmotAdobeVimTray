@@ -13,18 +13,18 @@ namespace MarmotAdobeVimTray
         private const int WH_KEYBOARD_LL = 13;
         private const int WM_KEYDOWN = 0x0100;
         private const int KEYEVENTF_KEYUP = 0x0002;
-        
+
         private static LowLevelKeyboardProc _proc = HookCallback;
         private static IntPtr _hookID = IntPtr.Zero;
         private static NotifyIcon _trayIcon = null!;
-        
+
         private static DateTime _lastGTime = DateTime.MinValue;
-        private static DateTime _lastColonTime = DateTime.MinValue; 
+        private static DateTime _lastColonTime = DateTime.MinValue;
         private const int G_TIMEOUT_MS = 600;
-        private const int COLON_TIMEOUT_MS = 1000; 
+        private const int COLON_TIMEOUT_MS = 1000;
 
         private static bool _isGWaiting = false;
-        private static bool _isColonWaiting = false; 
+        private static bool _isColonWaiting = false;
 
         [STAThread]
         static void Main()
@@ -57,20 +57,32 @@ namespace MarmotAdobeVimTray
         private static ContextMenuStrip CreateContextMenu()
         {
             var menu = new ContextMenuStrip();
-            menu.Items.Add("操作指南", null, (s, e) => {
-                MessageBox.Show("Vim 智慧關閉版：\n\n" +
-                    ":q  -> 關閉分頁；若無分頁則退出程式\n" +
-                    "h / l : 左右分頁\n" +
-                    "j / k : 上下捲動\n" +
-                    "d / y : 上下翻頁\n" +
-                    "gg / G : 首尾\n" +
-                    "Esc : 重設狀態", "MarmotAdobeVimTray");
+
+            // 操作指南 (User Guide)
+            menu.Items.Add("User Guide", null, (s, e) =>
+            {
+                MessageBox.Show(
+                    ":q      -> Close tab; Exit if no documents left\n" +
+                    "h / l   : Switch to Left / Right tab\n" +
+                    "j / k   : Scroll Down / Up\n" +
+                    "d / u   : Page Down / Up\n" +
+                    "gg / G  : Jump to Top / Bottom\n" +
+                    "gt / gT : Next / Previous tab\n" +
+                    "Esc     : Reset prefix states\n\n" 
+                    );
             });
-            menu.Items.Add("-");
-            menu.Items.Add("退出本工具", null, (s, e) => { _trayIcon.Visible = false; Application.Exit(); });
+
+            menu.Items.Add("-"); // 分隔線
+
+            // 退出程式 (Exit)
+            menu.Items.Add("Exit", null, (s, e) =>
+            {
+                _trayIcon.Visible = false;
+                Application.Exit();
+            });
+
             return menu;
         }
-
         private static IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
         {
             if (nCode >= 0 && wParam == (IntPtr)WM_KEYDOWN)
@@ -117,7 +129,8 @@ namespace MarmotAdobeVimTray
                         if ((DateTime.Now - _lastGTime).TotalMilliseconds < G_TIMEOUT_MS)
                         {
                             if (vkCode == (int)Keys.G && !isShiftDown) { SendKeys.SendWait("^{HOME}"); ResetStates(); return (IntPtr)1; }
-                            if (vkCode == (int)Keys.T) {
+                            if (vkCode == (int)Keys.T)
+                            {
                                 if (isShiftDown) { keybd_event((byte)Keys.ShiftKey, 0, KEYEVENTF_KEYUP, 0); SendKeys.SendWait("^+{TAB}"); }
                                 else { SendKeys.SendWait("^{TAB}"); }
                                 ResetStates(); return (IntPtr)1;
@@ -190,7 +203,7 @@ namespace MarmotAdobeVimTray
             return false;
         }
 
-        private static bool IsModifierKey(int vkCode) => 
+        private static bool IsModifierKey(int vkCode) =>
             vkCode == (int)Keys.ShiftKey || vkCode == (int)Keys.LShiftKey || vkCode == (int)Keys.RShiftKey ||
             vkCode == (int)Keys.ControlKey || vkCode == (int)Keys.LControlKey || vkCode == (int)Keys.RControlKey;
 
