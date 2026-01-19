@@ -1,4 +1,4 @@
-## 英文
+## En
 Every time I opened Adobe PDF Reader, the existing "Vim mode" would reset or break, which was incredibly frustrating. So, I did some "vibe coding" and built this tool. It uses global keyboard hooks to ensure the Vim experience works exactly as intended.
 
 Keybindings
